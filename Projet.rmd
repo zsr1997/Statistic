@@ -1,0 +1,243 @@
+---
+title:"Rapport de STAT"
+
+header-includes:
+  \usepackage{ulem}
+  
+output:
+  pdf_document: default
+ 
+---
+
+
+Tout d'abord, on commence par créer un tableau des données et tracer les nuages de points entre le variable physiologique Dm_VA et les variables Physiologique, Age, Taille POIDS, BMI. Puis on peut regarder le lien avec les variables explicative par $Y$:
+
+```{r}
+poumon <- read.table(file=file.choose(), sep="\t", dec=",", header=TRUE)
+
+var<-c(2,3,4,5,6,7,9)
+pouphysio<-poumon[,var]
+head(pouphysio)
+```
+
+
+```{r}
+pairs(pouphysio[,3:7], pch = 3, col = "blue", main = "Titre")
+```
+
+On considère donc un modèle Regression Lineaire Multiple comme $Y = X\beta + \Sigma$ ou $X$ est la matrice d'explicative (dépend de l'origine, du sexe, de l'age, de la taille, du poids et du BMI), $Y$ est la variable endogene (physiologique) et ce modèle sous 3 hypothèses :
+
+1. X est de rang maximal
+2. $\Sigma$ centrée
+3. l'homoscedasticite et les expériences sont indépendantes entre elles.
+
+
+On détermine les valeurs des $\beta$ avec les commandes suivantes :
+
+```{r}
+modelPhysio <- lm(Dm_VA~origine+Sexe+AGE+TAILLE_EN_M+POIDS+BMI,data = pouphysio)
+s<- summary(modelPhysio)
+s
+```
+On voit que l'adjuste R carré est 0.5047, donc ce modèle n'est pas très mal. car il est assez proche que 1. Ensuite, on voit que le p-valeur d'origine est 0.25>0.05, donc on enlève la variable origine puis on refait le test. On peut aussi savoir que les estimateurs de $\beta$ sont: $(-0.082520,20.584458,-0.244907,0.747025)^t$
+
+```{r}
+modelPhysio <- lm(Dm_VA~Sexe+AGE+TAILLE_EN_M+POIDS+BMI,data = poumon)
+s<- summary(modelPhysio)
+s
+```
+  
+Test par individuel : 
+  
+Comparaison p-valeur avec $\alpha$ (T-test)
+p-valeur de Sexe M est 0.03066 et 0.05> 0.03066 > 0.01, donc on rejette H0 au seuil 0.05 mais on ne peut pas rejetter H0 au seuil 0.01
+C'est à dire qu'il y a le lien entre le sexe et le Dm_VA.
+
+p-valeur<0.05 d'age est 2e-16 et 2e-16 < 0.01 < 0.05 < 0.1 , donc on rejette H0
+C'est à dire qu'il y a le lien entre l'âge et le Dm_VA.r
+p-valeur de taille est 0.00374 et 0.00374 < 0.01 < 0.05 < 0.1 , donc on rejette H0
+C'est à dire qu'il y a le lien entre la taille et le Dm_VA.
+
+p-valeur de poids est 0.00416 et 0.00416 < 0.01 < 0.05 < 0.1 , donc on rejette H0
+C'est à dire qu'il y a le lien entre le poids et le Dm_VA.
+
+p-valeur de BMI est 0.00170 et 0.00170 < 0.01 < 0.05 < 0.1 , donc on rejette H0
+C'est à dire qu'il y a le lien entre le BMI et le Dm_VA.
+
+On calcule les intervalles de confiance pour ces paramètres avec la commande suivante :
+
+```{r}
+confint(modelPhysio)
+```
+
+Intervalle de confiance à 95% des paramètres du modèle
+
+Les intervalles de confiance à 95% sont également donnés :
+
+$\beta = (\beta_1, \beta_2, \beta_3, \beta_4, \beta_5)^t$
+$$\beta_1 \in [0.05143830,  1.04505174]$$
+$$\beta_2 \in [-0.09404365, -0.07311550]$$
+$$\beta_3 \in [5.03589766, 32.76240846]$$
+$$\beta_4 \in [-0.41543868, -0.08355383]$$
+$$\beta_5 \in [0.27684774, 1.19960003]$$
+
+On y trouve de plus une estimation de $\Sigma$ donnee par la matrice Residuals et une
+estimation de $\sigma^2$ = 1.499.
+
+On cnsidère maintenant le test :
+$$\left\lbrace\begin{array}{lll}      				
+        				H_0: \beta_k=0\\
+        				H_1: \beta_k\neq 0\\
+\end{array}\right.$$
+
+avec $k=1,2,3,4,5$
+
+Par F-test:
+comme p-valeur est 2.2e-16 et 2.2e-16 < 0.01 < 0.05 < 0.1,$\Longleftrightarrow$ p-valeur avec $min\alpha$ = 0.01. 
+
+Donc on rejette H0, c'est-a-dire il y a une influence entre les variables explicative.
+
+```{r}
+modelPhysio <- lm(Dm_VA~Sexe+AGE+TAILLE_EN_M+POIDS+BMI,data = pouphysio)
+t<-modelPhysio
+res<- t$res
+pred<-predict(modelPhysio)
+plot(pred, res)
+```
+On enlève les valeurs des residus ne depend pas de celles prévues de $Y$
+````{r}
+resstud <-rstudent(modelPhysio)
+trop <- which(abs(resstud)>3)
+resstud[trop]
+out <- poumon[trop,]
+```
+Si on refait le modèle sans cet individu
+
+```{r}
+modelPhysio <- lm(Dm_VA~Sexe+AGE+TAILLE_EN_M+POIDS+BMI, data=poumon[-trop,])
+summary(modelPhysio)
+```
+Vérifie par le QQ-Plot
+```{r}
+layout(matrix(1:4,2,2))
+plot(modelPhysio)
+```
+
+On va maintenant valider le modèle
+Vérifier le residu suit un loi normal avec le test de Shapiro-Wilk
+
+```{r}
+res<-t$res
+shapiro.test(res)
+```
+
+W=0.98859 proche que 1 et p-valeur = 0.011 > 0.01 mais p-valeur < 0.05 donc on rejette H0 au seuil $\alpha=0.5$ mais pas au seuil 0.01.
+
+Vérifier avec Histogram:
+
+```{r}
+hist(res)
+pc<- predict(modelPhysio, interval="prediction",level=0.99,newdata=poumon)
+plot(pc[,1], poumon$Dm_VA)
+```
+Ce modèle est alors valide.
+ 
+
+
+
+
+
+
+Séparer l'échantiléon entre un échantiléon d'apprentissage et un échantiléon de validation.
+
+L'échantiléon d'apprentissage : environ 75% des individus
+L'échantiléon de validation   : environ 25% des individus
+```{r}
+tr <- sample(1:nrow(poumon),225)
+train <- poumon[tr,]
+test <- poumon[-tr,]
+```
+
+
+construit le modèle sur échantillécn d'apprentissage
+```{r}
+model<-lm(Dm_VA~Sexe+AGE+TAILLE_EN_M+POIDS+BMI, data=train)
+pc<- predict(model, interval="prediction",newdata=test)
+```
+
+
+On calcule le pourcentage d'individus dont la valeur de Dm_VA est dans l'intervalle de prédiction et le R2 ajuste calcule sur ces données testés
+
+```{r}
+good<-(pc[,2]<test$Dm_VA)*(pc[,3]>test$Dm_VA)
+indic1<-sum(good)/length(good)
+SCE<-sum((pc[,1]-mean(test$Dm_VA))^2)
+SCT<-sum((mean(test$Dm_VA)-test$Dm_VA)^2)
+SCR<-sum((pc[,1]-test$Dm_VA)^2)
+indic2<-SCE/SCT
+indic3<-1-((SCR/(length(poumon$Dm_VA)-6))/(SCT/(length(poumon$Dm_VA-1))))
+indic1
+indic2
+indic3
+```
+
+
+
+$R^2 \approx$ 50%, et $\bar{R^2} \approx$ 50%, donc on peut dire que cet étude n'est pas mal.
+
+
+
+```{r}
+B <- 100
+vindic1 <- rep(NA,B)
+vindic2 <- rep(NA,B)
+vindic3 <- rep(NA,B)
+for (b in 1:B)
+{
+  tr <- sample(1:nrow(poumon),225)
+  trainval <- poumon[tr,]
+  test <- poumon[-tr,]
+  model<-lm(Dm_VA~Sexe+AGE+TAILLE_EN_M+POIDS+BMI, data=train)
+  pc<- predict(model, interval="prediction",newdata=test)
+  good<-(pc[,2]<test$Dm_VA)*(pc[,3]>test$Dm_VA)
+  vindic1[b]<-sum(good)/length(good)
+  SCE<-sum((pc[,1]-mean(test$Dm_VA))^2)
+  SCT<-sum((mean(test$Dm_VA)-test$Dm_VA)^2)
+  SCR<-sum((pc[,1]-test$Dm_VA)^2)
+  vindic2[b]<-SCE/SCT
+  vindic3[b]<-1-((SCR/(length(poumon$Dm_VA)-6))/(SCT/(length(poumon$Dm_VA-1))))
+}
+boxplot(vindic1,main="Bonnes predictions sur B decoupages")
+boxplot(vindic2,main="R2 sur B decoupages")
+boxplot(vindic2,main="R2 ajuste sur B decoupages")
+```
+
+Après 100 fois etudier, on obtient la médiane du pourcentage d'individus dont la valeur de Dm_VA l'intervalle de prediction égale environ à 94.5%.La médiane du$R^2e \approx 45%$ et $\hat(R^2) \approx 45%$. Alors ce modèle d'étude est au niveau moyen.
+
+Maintenant ,on prédit les indivius suivants:
+
+1.Anne, 54ans, 1m68, 57kg donc BMI = 57/(1.68*1.68) = 20.19558
+2.Thomas, 31ans, 1m75, 65kg donc BMI = 65/(1.75*1.75) = 21.22449
+3.Andre, 91ans, 1m72, 68kg donc BMI = 68/(1.72*1.72) = 22.9854
+
+```{r}
+Sexe <- c("F","M","M")
+AGE <- c(54, 31, 91)
+TAILLE_EN_M <- c(1.68, 1.75, 1.72)
+POIDS <- c(57, 65, 68)
+BMI <- c(20.19558, 21.22449, 22.9854)
+
+testdata <- data.frame(Sexe, AGE, TAILLE_EN_M, POIDS, BMI)
+p2<- predict(modelPhysio, interval="prediction",level=0.99,newdata=testdata)
+p2
+```
+
+
+On peut donc prédire les Dm_VA de Anne, Thomas, Andre sont 11.294432, 13.835673 et 8.865773 .
+
+
+
+
+
+
+
